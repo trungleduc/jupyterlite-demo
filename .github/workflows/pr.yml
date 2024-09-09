@@ -19,6 +19,4 @@ jobs:
       - name: "Comment APSS link on workflow"
         uses: trungleduc/appsharingspace-pr-comment/.github/actions/pr-comment@main
         with:
-          github_token: ${{ secrets.github_token }}
-          artifact_name: artifact
           index_path: lab/index.html

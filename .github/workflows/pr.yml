@@ -1,14 +1,20 @@
 name: Comment on the pull request
 
+#####
+# This workflow is triggered by pull_request_target event.
+# Never checkout the PR, run ANY local code or using external action on it.
+#####
+
 on:
-  workflow_run:
-    workflows: ["Build and Deploy"]
-    types:
-      - completed
+- pull_request_target
 
 permissions:
   pull-requests: write
 
+env:
+    INDEX_PATH: 'index.html'
+    ARTIFACT_NAME: 'artifact' 
+    COMMENT_PREFIX: 'PR Preview ' 
 jobs:
   comment:
     runs-on: ubuntu-latest
@@ -17,6 +23,55 @@ jobs:
       github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: "Comment APSS link on workflow"
-        uses: trungleduc/appsharingspace-pr-comment/.github/actions/pr-comment@main
+        uses: actions/github-script@v7
+    
         with:
-          index_path: lab/index.html
+          script: |
+            const runId = ${{ github.run_id }};
+            const prNumber = ${{ github.event.number }};
+            const indexPath = "${{ env.INDEX_PATH }}";
+            const artifactName = "${{ env.ARTIFACT_NAME }}";
+            const commentPrefix = "${{ env.COMMENT_PREFIX }}";
+            const owner = "${{ github.repository_owner }}";
+            const repo = "${{ github.repository }}";
+
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner,
+              repo,
+              run_id: runId,
+            });
+            const matchArtifact = artifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == artifactName;
+            })[0];
+            core.info(`Found artifact ${matchArtifact.id}`)
+            if (!matchArtifact) {
+              return;
+            }
+            const artifactId = matchArtifact.id;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber,
+            });
+            const botComments = comments.filter(
+              (comment) => comment.user.id === 41898282
+            );
+            const botComment = botComments.find((cm) => cm.body.includes(commentPrefix));
+            const apssLink = `https://appsharing.space/static-app?url=https://github.com/${owner}/${repo}/actions/runs/${runId}/artifacts/${artifactId}&indexPath=${indexPath}`;
+            const body = `${commentPrefix} [appsharing.space](${apssLink})`;
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body,
+              });
+            }
+            

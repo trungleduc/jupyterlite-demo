@@ -30,9 +30,9 @@ jobs:
       #   with:
       #     path: ./dist
       - name: Save artifact data
-        uses: trungleduc/appsharingspace-pr-comment/.github/actions/save-pr-number@main
+        uses: trungleduc/appsharingspace-pr-comment/.github/actions/save-artifact-link@v2
         with:
-          artifact_link: 'https://github.com/foo/bar'
+          artifact_link: 'https://github.com/${{ github.repository }}/actions/runs/${{github.run_id}}/artifacts/1913713037'
         
-          
+
 
